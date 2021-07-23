@@ -13,7 +13,7 @@ app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
-mongoose.connect(process.env.ATLAS_URI, { useNewUrlParser: true });
+mongoose.connect(process.env.ATLAS_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 
 const itemSchema = {
     name: {
@@ -47,57 +47,11 @@ const item3 = new Item({
 
 const defaultItems = [item1, item2, item3];
 
-app.get("/", (req, res) => {
-    Item.find((err, items) => {
-        if (items.length === 0) {
-            Item.insertMany(defaultItems, (err) => {
-                if (err) {
-                    console.log(err);
-                }
-            });
+app.get("/:category?", function (req, res) {
+    const todayDate = new Date().toISOString().slice(0, 10);
+    let listName = _(req.params.category);
+    if (!listName) listName = todayDate;
 
-            res.redirect("/");
-        } else {
-            res.render("list", { listTitle: "Today", newListItems: items, formUrl: "/" });
-        }
-    });
-});
-
-app.post("/", function (req, res) {
-
-    const itemName = req.body.newItem;
-
-    new Item({ name: itemName }).save();
-
-    res.redirect("/");
-});
-
-app.post("/delete", (req, res) => {
-    const id = req.body.checkbox;
-    const listName = req.body.listName;
-
-    if (listName === "Today") {
-        Item.findByIdAndRemove(id, (err) => {
-            if (err) {
-                console.log(err);
-            } else {
-                res.redirect("/");
-                console.log("Item was successfully deleted.");
-            }
-        });
-    } else {
-        List.findOneAndUpdate({ name: listName },
-            { $pull: { items: { _id: id } } },
-            (err, results) => {
-                if (!err) {
-                    res.redirect("/" + listName);
-                }
-            });
-    }
-});
-
-app.get("/:category", function (req, res) {
-    const listName = _(req.params.category);
     List.findOne({ name: listName }, (err, list) => {
         if (list) {
             //Show an existing list
@@ -114,13 +68,27 @@ app.get("/:category", function (req, res) {
     });
 });
 
-app.post("/:category", (req, res) => {
-    const listName = req.params.category;
+app.post("/delete", (req, res) => {
+    const id = req.body.checkbox;
+    let listName = _(req.body.listName);
+
+    List.findOneAndUpdate({ name: listName },
+        { $pull: { items: { _id: id } } },
+        (err, results) => {
+            if (!err) {
+                res.redirect("/" + listName);
+            }
+        });
+});
+
+app.post("/:category?", (req, res) => {
+    const listName = _(req.params.category);
     List.findOne({ name: listName }, (err, list) => {
         list.items.push(new Item({ name: req.body.newItem }));
-        list.save();
+        list.save().then((result) => {
+            res.redirect("/" + listName);
+        });
     });
-    res.redirect("/" + listName);
 });
 
 app.listen(process.env.PORT || "3000", () => {
