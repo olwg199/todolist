@@ -5,10 +5,10 @@
 
     <div id="heading">
       <h1>
-        <%= listTitle===new Date().toISOString().slice(0, 10)?"Today":listTitle %>
+        Date:<input type="date" name="date" id="datePicker" value="<%=listTitle%>"
+          onchange="window.location.href = '/'+ this.value">
       </h1>
-      Date:<input type="date" name="date" id="datePicker" value="<%=listTitle%>"
-        onchange="window.location.href = '/'+ this.value">
+
     </div>
 
     <div class="box">
